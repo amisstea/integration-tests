@@ -2,7 +2,7 @@
 apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
-  name: provision-cluster-test
+  name: provision-cluster
 spec:
   params:
     - description: Snapshot of the application
