@@ -4,10 +4,17 @@ kind: Pipeline
 metadata:
   name: deploy-operator
 spec:
+  description: |
+    An integration test which provisions an ephemeral Hypershift cluster and deploys an Operator
+    bundle from a Konflux snapshot.
   params:
     - description: Snapshot of the application
       name: SNAPSHOT
       default: '{"components": [{"name":"test-app", "containerImage": "quay.io/example/repo:latest"}]}'
+      type: string
+    - description: Namespace where the the Operator bundle will be deployed.
+      name: NAMESPACE
+      default: default
       type: string
   tasks:
     - name: parse-metadata
@@ -47,9 +54,6 @@ spec:
         results:
           - name: clusterName
             value: "$(steps.create-cluster.results.clusterName)"
-        volumes:
-          - name: credentials
-            emptyDir: {}
         steps:
           - name: get-supported-versions
             ref:
@@ -92,17 +96,19 @@ spec:
                 value: $(tasks.provision-eaas-space.results.secretRef)
               - name: version
                 value: "$(steps.pick-version.results.version)"
-              - name: instanceType
-                value: m5.xlarge
     - name: deploy-operator
       runAfter:
         - provision-cluster
       params:
         - name: bundleImage
           value: "$(tasks.parse-metadata.results.component-container-image)"
+        - name: namespace
+          value: "$(params.NAMESPACE)"
       taskSpec:
         params:
           - name: bundleImage
+            type: string
+          - name: namespace
             type: string
         volumes:
           - name: credentials
@@ -137,5 +143,5 @@ spec:
               - run
               - bundle
               - --namespace
-              - default
+              - "$(params.namespace)"
               - "$(params.bundleImage)"

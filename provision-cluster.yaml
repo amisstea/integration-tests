@@ -4,6 +4,8 @@ kind: Pipeline
 metadata:
   name: provision-cluster
 spec:
+  description: |
+    An integration test which provisions an ephemeral Hypershift cluster and obtains a kubeconfig.
   params:
     - description: Snapshot of the application
       name: SNAPSHOT
@@ -77,16 +79,6 @@ spec:
                 value: $(tasks.provision-eaas-space.results.secretRef)
               - name: version
                 value: "$(steps.pick-version.results.version)"
-              - name: instanceType
-                value: m5.large
-    - name: verify
-      runAfter:
-        - provision-cluster
-      taskSpec:
-        volumes:
-          - name: credentials
-            emptyDir: {}
-        steps:
           - name: get-kubeconfig
             ref:
               resolver: git
@@ -101,23 +93,6 @@ spec:
               - name: eaasSpaceSecretRef
                 value: $(tasks.provision-eaas-space.results.secretRef)
               - name: clusterName
-                value: "$(tasks.provision-cluster.results.clusterName)"
+                value: "$(steps.create-cluster.results.clusterName)"
               - name: credentials
                 value: credentials
-          - name: verify-basic-commands
-            image: registry.redhat.io/openshift4/ose-cli:latest
-            env:
-              - name: KUBECONFIG
-                value: "/credentials/$(steps.get-kubeconfig.results.kubeconfig)"
-            volumeMounts:
-              - name: credentials
-                mountPath: /credentials
-            script: |
-              #!/bin/bash
-              set -ex
-              oc get nodes
-              oc get namespaces
-              oc run test-pod --image=nginx
-              oc get pods test-pod
-              oc get pods
-              oc delete pod test-pod
